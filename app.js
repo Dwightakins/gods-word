@@ -97,7 +97,7 @@ async function vBible(){
     <button class="nav2" id="next" aria-label="Next chapter">›</button>
     <a class="nav2" style="border-radius:10px;color:inherit" href="#search" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
   </div>
-  <a class="findbox" href="#search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Find a book or chapter, e.g. John 3</a>
+  <div class="finds"><a class="findbox" href="#books"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5"/></svg>Search books</a><a class="findbox" href="#search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search verses</a></div>
   <div class="text" id="text"><p class="empty">Loading…</p></div>`;
   $('#pick').onclick = () => { bk.book = 0; go('books'); };
   $('#prev').onclick = () => step(-1);
@@ -153,12 +153,13 @@ function parseRef(q){
   if(c < 1 || c > books[b-1].c) return null;
   return {b, c, v};
 }
+const searchSwitch = on => `<div class="seg big" style="margin:14px 0 12px"><a href="#books" class="${on==='books'?'on':''}">Search books</a><a href="#search" class="${on==='verses'?'on':''}">Search verses</a></div>`;
 let bk = {q:'', t:'all', book:0};
 function vBooks(){
   if(bk.book) return vChapters(bk.book);
   view.innerHTML = `<div class="readbar" style="flex-direction:column;align-items:stretch;gap:10px">
-    <div style="display:flex;align-items:center;gap:8px"><a class="back" style="margin:0" href="#bible">‹ Back</a><h2 style="margin-left:6px">Books</h2></div>
-    <input type="search" id="bq" placeholder="Type a book: J, Gen, 1 Cor, John 3:16" value="${esc(bk.q)}" autocomplete="off" aria-label="Find a book">
+    <a class="back" style="margin:0" href="#bible">‹ Back to reading</a>${searchSwitch('books')}
+    <input type="search" id="bq" placeholder="Type a book name: J, Gen, 1 Cor" value="${esc(bk.q)}" autocomplete="off" aria-label="Find a book">
     <div class="seg" style="margin:0;align-self:flex-start">${[['all','All'],['ot','Old Testament'],['nt','New Testament']].map(([k,l])=>`<button data-tt="${k}" class="${bk.t===k?'on':''}">${l}</button>`).join('')}</div>
   </div><div id="blist"></div>`;
   const q = $('#bq');
@@ -228,14 +229,13 @@ let lastQ = '', sTimer = 0, sToken = 0;
 const loadAll = () => Promise.all(books.map((_,i)=>loadBook(i+1)));
 function vSearch(){
   view.innerHTML = `<a class="back" href="#bible">‹ Back to reading</a>
-  <h1 style="margin:6px 0 14px">Search</h1>
-  <form id="sf"><input type="search" id="q" placeholder="Book, verse or words: John, John 3:16, fear not" value="${esc(lastQ)}" enterkeyhint="search" autocomplete="off" aria-label="Search"></form>
+  ${searchSwitch('verses')}
+  <form id="sf"><input type="search" id="q" placeholder="Search words in verses: fear not, love, peace" value="${esc(lastQ)}" enterkeyhint="search" autocomplete="off" aria-label="Search"></form>
   <div id="sBooks"></div><div id="res"></div>`;
   const q = $('#q');
   q.oninput = () => { lastQ = q.value; liveSearch(q.value); };
   $('#sf').onsubmit = e => { e.preventDefault(); const r = parseRef(q.value); if(r){ lastQ=''; openRef(r.b,r.c,r.v); return; }
-    const m = bookMatches(q.value); if(m.length === 1 || (m[0] && norm(books[m[0]-1].n) === norm(q.value))){ lastQ=''; openBook(m[0]); return; }
-    clearTimeout(sTimer); verseSearch(q.value.trim()); q.blur(); };
+        clearTimeout(sTimer); verseSearch(q.value.trim()); q.blur(); };
   view.onclick = e => {
     const r = e.target.closest('[data-ref]'); if(r){ const [b,c,v] = r.dataset.ref.split('.').map(Number); lastQ=''; openRef(b,c,v); return; }
     const bt = e.target.closest('[data-b]'); if(bt){ lastQ=''; openBook(+bt.dataset.b); return; }
@@ -248,16 +248,15 @@ function vSearch(){
 function liveSearch(raw){
   const q = raw.trim(), box = $('#sBooks'), res = $('#res');
   clearTimeout(sTimer); sToken++;
-  if(!q){ box.innerHTML = `<p class="empty">Type a book name (like J or Gen), a verse (John 3:16) or any words.</p>`; res.innerHTML=''; return; }
-  const r = parseRef(q), m = bookMatches(q).slice(0,12);
+  if(!q){ box.innerHTML = `<p class="empty">Type any words to find every verse that contains them.</p>`; res.innerHTML=''; return; }
+  const r = parseRef(q);
   let html = r ? `<button class="card jump" data-ref="${r.b}.${r.c}.${r.v}"><span>Go to</span><b>${esc(refOf(r.b,r.c,r.v||0))}</b></button>` : '';
-  if(m.length && !r) html += `<p class="label sect">Books</p><div class="blist">${m.map(b=>`<button class="brow" data-b="${b}"><span>${esc(books[b-1].n)}</span><small>${books[b-1].c} chapter${books[b-1].c>1?'s':''}</small></button>`).join('')}</div>`;
   box.innerHTML = html;
   res.innerHTML = '';
-  if(q.length >= 3 && !r) sTimer = setTimeout(()=>verseSearch(q), 450);
+  if(q.length >= 2 && !r) sTimer = setTimeout(()=>verseSearch(q), 400);
 }
 async function verseSearch(q){
-  const res = $('#res'), my = ++sToken; if(!res || q.length < 3) return;
+  const res = $('#res'), my = ++sToken; if(!res || q.length < 2) return;
   res.innerHTML = `<p class="label sect">Verses</p><p class="empty">Searching…</p>`;
   try{ await loadAll(); }
   catch(e){ if(my===sToken) res.innerHTML = `<p class="empty">Word search needs the full Bible. Connect to the internet once, or use "Save the whole Bible for offline" in settings.</p>`; return; }
