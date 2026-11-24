@@ -1,9 +1,10 @@
 // God's Word service worker: opens instantly from the phone, and keeps what you read for offline use.
-const SHELL = 'gw-shell-v8';
+const SHELL = 'gw-shell-v9';
 const DATA = 'gw-data-v2';
 const FILES = ['./', 'index.html', 'app.js', 'data.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon.png',
-  'icons/apple-touch-icon.png', 'icons/shortcut-96.png'];
+  'icons/apple-touch-icon.png', 'icons/shortcut-96.png',
+  'fonts/eb-garamond-latin-400-normal.woff2', 'fonts/eb-garamond-latin-400-italic.woff2', 'fonts/eb-garamond-latin-500-normal.woff2', 'fonts/eb-garamond-latin-600-normal.woff2', 'fonts/inter-latin-400-normal.woff2', 'fonts/inter-latin-500-normal.woff2', 'fonts/inter-latin-600-normal.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -36,6 +37,6 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.pathname.includes('/data/c/') || url.pathname.endsWith('/data/kjv.json')) { e.respondWith(cacheFirst(DATA, req)); return; }
-  if (url.host.includes('fonts.g')) { e.respondWith(cacheFirst(SHELL, req)); return; }
+  if (url.pathname.includes('/fonts/')) { e.respondWith(cacheFirst(SHELL, req)); return; }
   if (url.origin === location.origin) e.respondWith(staleWhileRevalidate(req));
 });
