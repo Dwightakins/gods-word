@@ -98,7 +98,7 @@ async function vBible(){
     <a class="nav2" style="border-radius:10px;color:inherit" href="#search" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
   </div>
   <div class="text" id="text"><p class="empty">Loading…</p></div>`;
-  $('#pick').onclick = pickBook;
+  $('#pick').onclick = () => { bk.book = 0; go('books'); };
   $('#prev').onclick = () => step(-1);
   $('#next').onclick = () => step(1);
   let ch;
@@ -134,17 +134,67 @@ function setPos(b,c){ pos = {b, c}; store.set('pos', pos); clearSel(); }
 function openRef(b, c, v){ setPos(b, c); flashV = v || 0; go('bible'); }
 function clearSel(){ sel.clear(); $('#actions').classList.remove('show'); view.querySelectorAll('.v.sel').forEach(e=>e.classList.remove('sel')); }
 
-function pickBook(){
-  const grp = (from, to) => books.slice(from, to).map((x,i)=>`<button data-b="${from+i+1}" class="${pos.b===from+i+1?'on':''}">${esc(x.n)}</button>`).join('');
-  openSheet(`<h2>Choose a book</h2><p class="label" style="margin:14px 0 0">Old Testament</p><div class="grid">${grp(0,39)}</div><p class="label">New Testament</p><div class="grid">${grp(39,66)}</div>`);
-  $('#panel').onclick = e => { const t = e.target.closest('[data-b]'); if(t) pickChapter(+t.dataset.b); };
+/* ---------- BOOKS (find a book / chapter) ---------- */
+const norm = x => x.toLowerCase().replace(/[^a-z0-9]/g,'');
+function bookMatches(q){
+  const n = norm(q); if(!n) return books.map((_,i)=>i+1);
+  const first = [], second = [];
+  books.forEach((bk,i)=>{ const k = norm(bk.n), bare = k.replace(/^\d/,'');
+    if(k.startsWith(n)) first.push(i+1); else if(bare.startsWith(n)) second.push(i+1); });
+  return first.concat(second);
 }
-function pickChapter(b){
+// "john 3:16", "gen 1", "1 cor 13 4", "ps 23"
+function parseRef(q){
+  const m = q.trim().match(/^(\d?\s*[a-z][a-z\s]*?)\.?\s*(\d+)(?:\s*[:.\s]\s*(\d+))?$/i);
+  if(!m) return null;
+  const b = bookMatches(m[1])[0]; if(!b) return null;
+  const c = +m[2], v = m[3] ? +m[3] : 0;
+  if(c < 1 || c > books[b-1].c) return null;
+  return {b, c, v};
+}
+let bk = {q:'', t:'all', book:0};
+function vBooks(){
+  if(bk.book) return vChapters(bk.book);
+  view.innerHTML = `<div class="readbar" style="flex-direction:column;align-items:stretch;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px"><a class="back" style="margin:0" href="#bible">‹ Back</a><h2 style="margin-left:6px">Books</h2></div>
+    <input type="search" id="bq" placeholder="Type a book: J, Gen, 1 Cor, John 3:16" value="${esc(bk.q)}" autocomplete="off" aria-label="Find a book">
+    <div class="seg" style="margin:0;align-self:flex-start">${[['all','All'],['ot','Old Testament'],['nt','New Testament']].map(([k,l])=>`<button data-tt="${k}" class="${bk.t===k?'on':''}">${l}</button>`).join('')}</div>
+  </div><div id="blist"></div>`;
+  const q = $('#bq');
+  q.oninput = () => { bk.q = q.value; drawBooks(); };
+  q.onkeydown = e => { if(e.key === 'Enter'){ const r = parseRef(q.value); if(r){ bk.q=''; openRef(r.b,r.c,r.v); } else { const f = bookMatches(q.value)[0]; if(f) openBook(f); } } };
+  view.querySelector('.seg').onclick = e => { const t = e.target.closest('[data-tt]'); if(!t) return; bk.t = t.dataset.tt; view.querySelectorAll('[data-tt]').forEach(x=>x.classList.toggle('on',x===t)); drawBooks(); };
+  $('#blist').onclick = e => {
+    const r = e.target.closest('[data-ref]'); if(r){ const [b,c,v] = r.dataset.ref.split('.').map(Number); bk.q=''; openRef(b,c,v); return; }
+    const t = e.target.closest('[data-b]'); if(t) openBook(+t.dataset.b);
+  };
+  drawBooks();
+  window.scrollTo(0,0);
+  if(window.matchMedia('(pointer:fine)').matches) q.focus();
+}
+const inTab = b => bk.t === 'all' || bk.q.trim() !== '' || (bk.t === 'ot' ? b <= 39 : b >= 40);
+function drawBooks(){
+  const list = bookMatches(bk.q).filter(inTab), r = parseRef(bk.q);
+  const row = b => `<button class="brow${pos.b===b?' on':''}" data-b="${b}"><span>${esc(books[b-1].n)}</span><small>${books[b-1].c} chapter${books[b-1].c>1?'s':''}</small></button>`;
+  let html = r ? `<button class="card jump" data-ref="${r.b}.${r.c}.${r.v}"><span>Go to</span><b>${esc(refOf(r.b,r.c,r.v||0))}</b></button>` : '';
+  if(!list.length) html += `<p class="empty">No book starts with "${esc(bk.q)}".</p>`;
+  else if(bk.q.trim()) html += `<div class="blist">${list.map(row).join('')}</div>`;
+  else {
+    const ot = list.filter(b=>b<=39), nt = list.filter(b=>b>=40);
+    if(ot.length) html += `<p class="label sect">Old Testament · 39 books</p><div class="blist">${ot.map(row).join('')}</div>`;
+    if(nt.length) html += `<p class="label sect">New Testament · 27 books</p><div class="blist">${nt.map(row).join('')}</div>`;
+  }
+  $('#blist').innerHTML = html;
+}
+function openBook(b){ if(books[b-1].c === 1){ bk.book=0; openRef(b,1); return; } bk.book = b; vChapters(b); }
+function vChapters(b){
   const n = books[b-1].c;
-  if(n === 1){ closeSheet(); setPos(b,1); vBible(); return; }
-  openSheet(`<h2>${esc(books[b-1].n)}</h2><p class="label">Choose a chapter</p><div class="grid ch">${Array.from({length:n},(_,i)=>`<button data-c="${i+1}" class="${pos.b===b&&pos.c===i+1?'on':''}">${i+1}</button>`).join('')}</div><button class="btn" id="backBooks">‹ All books</button>`);
-  $('#backBooks').onclick = pickBook;
-  $('#panel').onclick = e => { const t = e.target.closest('[data-c]'); if(t){ closeSheet(); setPos(b, +t.dataset.c); vBible(); } };
+  view.innerHTML = `<button class="back" id="allB" style="padding:0">‹ All books</button>
+  <h1 style="margin:4px 0 4px">${esc(books[b-1].n)}</h1><p class="label">${b<=39?'Old':'New'} Testament · choose a chapter</p>
+  <div class="grid ch">${Array.from({length:n},(_,i)=>`<button data-c="${i+1}" class="${pos.b===b&&pos.c===i+1?'on':''}">${i+1}</button>`).join('')}</div>`;
+  $('#allB').onclick = () => { bk.book = 0; vBooks(); };
+  view.onclick = e => { const t = e.target.closest('[data-c]'); if(t){ bk.book = 0; bk.q = ''; openRef(b, +t.dataset.c); } };
+  window.scrollTo(0,0);
 }
 
 /* verse actions */
@@ -177,13 +227,14 @@ let lastQ = '';
 function vSearch(){
   view.innerHTML = `<a class="back" href="#bible">‹ Back to reading</a>
   <h1 style="margin:6px 0 14px">Search the Bible</h1>
-  <form id="sf"><input type="search" id="q" placeholder="Try: peace, fear not, love one another" value="${esc(lastQ)}" enterkeyhint="search" aria-label="Search words"></form>
+  <form id="sf"><input type="search" id="q" placeholder="Words or a verse: peace, fear not, John 3:16" value="${esc(lastQ)}" enterkeyhint="search" aria-label="Search words"></form>
   <div id="res"></div>`;
   $('#sf').onsubmit = e => { e.preventDefault(); runSearch($('#q').value.trim()); };
   if(lastQ) runSearch(lastQ); else $('#q').focus();
 }
 async function runSearch(q){
   lastQ = q; const res = $('#res');
+  const r = parseRef(q); if(r){ lastQ=''; openRef(r.b, r.c, r.v); return; }
   if(q.length < 3){ res.innerHTML = `<p class="empty">Type at least 3 letters.</p>`; return; }
   res.innerHTML = `<p class="empty" id="prog">Searching…</p>`;
   const needle = q.toLowerCase(), hits = [];
@@ -303,11 +354,12 @@ if('serviceWorker' in navigator){ window.addEventListener('load', () => { try{ n
 /* ---------- ROUTER ---------- */
 function route(){
   const h = (location.hash || '#today').slice(1);
-  const tab = h.startsWith('help') ? 'help' : h === 'search' ? 'bible' : h;
+  const tab = h.startsWith('help') ? 'help' : (h === 'search' || h === 'books') ? 'bible' : h;
   document.querySelectorAll('.tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === tab));
   view.onclick = null; closeSheet(); if(h !== 'bible') clearSel();
   if(h === 'bible') vBible();
   else if(h === 'search') vSearch();
+  else if(h === 'books') vBooks();
   else if(h === 'help') vHelp();
   else if(h.startsWith('help-')) vSituation(h.slice(5));
   else if(h === 'saved') vSaved();
