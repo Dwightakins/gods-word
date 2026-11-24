@@ -1,29 +1,19 @@
-# God's Word (KJV)
+# God's Word
 
-A free, ad-free Bible web app you can install from Chrome (PWA).
+A simple, free Bible with no ads.
 
-## What's inside
-- `index.html` : layout and styles
-- `app.js` : all the app logic (Today, Bible reader, Search, Help me, Saved, Settings)
-- `data.js` : verse-of-the-day list, the 22 "What are you going through?" situations, prayers
-- `data/bible/1.json` to `66.json` : the full King James Bible, one file per book
-- `sw.js` : service worker (offline support)
-- `manifest.webmanifest` + `icons/` : what makes it installable
+**Open it:** https://dwightakins.github.io/gods-word/
 
-No build step. It is plain HTML, CSS and JavaScript.
+## Features
+- The full King James Version (KJV), Old and New Testament
+- Verse of the day and daily reading
+- "What are you going through?": verses and a short prayer for situations like fear, grief, money problems, sickness and more
+- Search by word, book or reference (for example John 3:16)
+- Highlights and bookmarks, saved on your device
+- Install it on your phone and read offline
 
-## Deploy on Vercel (free)
-1. Create a new GitHub repo and upload everything in this folder (keep the folder structure).
-2. Go to vercel.com, click **Add New > Project**, import the repo.
-3. Framework Preset: **Other**. Leave Build Command and Output Directory empty.
-4. Click **Deploy**. You get a link like `gods-word.vercel.app`.
-5. Open the link in Chrome on your phone. Tap the menu, then **Install app** or **Add to Home screen**.
+## Install on your phone
+Open the link in Chrome, tap the menu, then tap **Install app** or **Add to Home screen**.
+On iPhone, open it in Safari, tap **Share**, then **Add to Home Screen**.
 
-PWA install and offline mode need HTTPS, which Vercel gives you automatically.
-
-## Editing content
-- Daily verses and situations live in `data.js`. Edit the text there. Each verse has `ref` (reference), `b`/`c`/`v` (book number, chapter, verse) and `t` (the KJV text).
-- If you edit `app.js` or `index.html`, bump `gw-shell-v1` to `gw-shell-v2` in `sw.js` so phones pick up the new version.
-
-## Test locally
-Run `python -m http.server 8000` inside this folder and open http://localhost:8000
+Scripture text: King James Version, public domain.
