@@ -1,5 +1,5 @@
 // God's Word service worker: keeps the app and the chapters you read available offline.
-const SHELL = 'gw-shell-v3';
+const SHELL = 'gw-shell-v4';
 const DATA = 'gw-bible-v1';
 const FILES = ['./', 'index.html', 'app.js', 'data.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon.png', 'icons/apple-touch-icon.png', 'icons/shortcut-96.png'];

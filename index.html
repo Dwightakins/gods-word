@@ -70,7 +70,7 @@ section{margin-top:28px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .chip{padding:0 14px;border:1px solid var(--line);border-radius:22px;font-size:15px;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;min-height:44px}
 .readbar{position:sticky;top:calc(57px + env(safe-area-inset-top));z-index:10;background:var(--bg);display:flex;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
-.picker{font:600 20px var(--serif);padding:0 10px;display:flex;align-items:center;gap:6px;flex:1;justify-content:flex-start}
+.picker{font:600 20px var(--serif);padding:0 10px;display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;flex:1;justify-content:flex-start;text-align:left;line-height:1.1}.picker .label{width:100%}
 .nav2{width:44px;height:44px;border:1px solid var(--line);display:grid;place-items:center;flex:none}
 .nav2 svg{width:20px;height:20px}
 .text{font:400 var(--fs)/1.7 var(--serif);margin-top:18px;max-width:66ch}
@@ -87,6 +87,7 @@ section{margin-top:28px}
 .brow.on span{color:var(--ox2);font-weight:600}
 .sect{margin:18px 0 2px}
 .card.jump{margin-top:12px;background:var(--ox);color:#fff;border-color:var(--ox)}.card.jump span{color:#f0dfd0}
+.findbox{display:flex;align-items:center;gap:10px;margin-top:12px;min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--mute);text-decoration:none;font-size:16px}
 .pager{display:flex;justify-content:space-between;gap:10px;margin-top:28px}
 .actions{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));z-index:30;background:var(--ink);color:var(--bg);border-radius:16px;padding:8px;display:none;gap:4px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.25);width:min(360px,calc(100% - 24px));flex-wrap:wrap;justify-content:center}
 .actions.show{display:flex}

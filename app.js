@@ -92,11 +92,12 @@ async function vBible(){
   const {b, c} = pos, bk = books[b-1];
   view.innerHTML = `
   <div class="readbar">
-    <button class="picker" id="pick">${esc(bk.n)} ${c} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button class="picker" id="pick"><span class="label" style="font:500 12px var(--sans);display:block">Books</span>${esc(bk.n)} ${c} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
     <button class="nav2" id="prev" aria-label="Previous chapter">‹</button>
     <button class="nav2" id="next" aria-label="Next chapter">›</button>
     <a class="nav2" style="border-radius:10px;color:inherit" href="#search" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
   </div>
+  <a class="findbox" href="#search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Find a book or chapter, e.g. John 3</a>
   <div class="text" id="text"><p class="empty">Loading…</p></div>`;
   $('#pick').onclick = () => { bk.book = 0; go('books'); };
   $('#prev').onclick = () => step(-1);
