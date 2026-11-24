@@ -32,12 +32,20 @@ async function shareText(text){
   if(navigator.share){ try{ await navigator.share({text}); return; }catch(e){ if(e && e.name==='AbortError') return; } }
   copyText(text);
 }
-const cache = {};
-async function loadBook(b){
-  if(cache[b]) return cache[b];
-  const r = await fetch(`data/bible/${b}.json`);
+const chapCache = {};
+let full = null, fullP = null, curCh = null;
+async function getChapter(b, c){
+  if(full) return full[b-1][c-1];
+  const k = b+'.'+c; if(chapCache[k]) return chapCache[k];
+  const r = await fetch(`data/c/${b}/${c}.json`);
   if(!r.ok) throw new Error('load');
-  return cache[b] = await r.json();
+  return chapCache[k] = await r.json();
+}
+// whole Bible in one file: only fetched when someone searches words or saves for offline
+function loadFull(){
+  if(full) return Promise.resolve(full);
+  if(!fullP) fullP = fetch('data/kjv.json').then(r=>{ if(!r.ok) throw new Error('load'); return r.json(); }).then(d=>full=d).catch(e=>{ fullP=null; throw e; });
+  return fullP;
 }
 function dayOfYear(d=new Date()){ return Math.floor((d - new Date(d.getFullYear(),0,0)) / 864e5); }
 const NT = []; for(let b=40;b<=66;b++) for(let c=1;c<=books[b-1].c;c++) NT.push([b,c]);
@@ -104,13 +112,15 @@ async function vBible(){
   $('#prev').onclick = () => step(-1);
   $('#next').onclick = () => step(1);
   let ch;
-  try{ ch = (await loadBook(b))[c-1]; }
+  try{ ch = await getChapter(b, c); }
   catch(e){ $('#text').innerHTML = `<p class="empty">This chapter isn't saved on your phone yet. Connect to the internet once and it will be kept for offline reading.</p>`; return; }
   if(pos.b !== b || pos.c !== c) return;
+  curCh = ch;
   $('#text').innerHTML = `<h1>${esc(bk.n)} ${c}</h1>` + ch.map((t,i)=>{
     const k = `${b}.${c}.${i+1}`, h = hls[k];
     return `<span class="v${h ? ' h'+h.k : ''}" data-v="${i+1}"><sup>${i+1}</sup>${esc(t)}${marks[k] ? '<i class="bm" aria-label="bookmarked"></i>' : ''} </span>`;
   }).join('') + `<div class="pager"><button class="btn" id="p2">‹ Previous</button><button class="btn" id="n2">Next ›</button></div>`;
+  { let nb=b, nc=c+1; if(nc>books[b-1].c){ nb=b+1; nc=1; } if(nb<=66 && !full) setTimeout(()=>getChapter(nb,nc).catch(()=>{}), 800); }
   $('#p2').onclick = () => step(-1);
   $('#n2').onclick = () => step(1);
   $('#text').addEventListener('click', e => {
@@ -202,7 +212,7 @@ function vChapters(b){
 
 /* verse actions */
 function selText(){
-  const ch = cache[pos.b][pos.c-1], vs = [...sel].sort((a,b)=>a-b);
+  const ch = curCh, vs = [...sel].sort((a,b)=>a-b);
   const contiguous = vs.every((v,i)=>!i || v === vs[i-1]+1);
   const ref = contiguous ? refOf(pos.b,pos.c,vs[0],vs[vs.length-1]) : `${books[pos.b-1].n} ${pos.c}:${vs.join(',')}`;
   return {vs, ref, text: vs.map(v=>ch[v-1]).join(' ')};
@@ -213,8 +223,8 @@ function toggleMark(b,c,v,t){
   store.set('marks', marks);
 }
 $('#actions').addEventListener('click', e => {
-  const t = e.target.closest('button'); if(!t || !cache[pos.b]) return;
-  const {vs, ref, text} = selText(), ch = cache[pos.b][pos.c-1];
+  const t = e.target.closest('button'); if(!t || !curCh) return;
+  const {vs, ref, text} = selText(), ch = curCh;
   if(t.dataset.hl){ vs.forEach(v=>{ hls[`${pos.b}.${pos.c}.${v}`] = {k:+t.dataset.hl, t:ch[v-1], at:Date.now()}; }); store.set('hls', hls); clearSel(); vBibleKeep(); return; }
   const a = t.dataset.a;
   if(a === 'clear'){ vs.forEach(v=>delete hls[`${pos.b}.${pos.c}.${v}`]); store.set('hls', hls); clearSel(); vBibleKeep(); }
@@ -227,7 +237,6 @@ function vBibleKeep(){ const y = window.scrollY; vBible().then(()=>window.scroll
 
 /* ---------- SEARCH ---------- */
 let lastQ = '', sTimer = 0, sToken = 0;
-const loadAll = () => Promise.all(books.map((_,i)=>loadBook(i+1)));
 function vSearch(){
   view.innerHTML = `<a class="back" href="#bible">‹ Back to reading</a>
   ${searchSwitch('verses')}
@@ -242,7 +251,6 @@ function vSearch(){
     const bt = e.target.closest('[data-b]'); if(bt){ lastQ=''; openBook(+bt.dataset.b); return; }
     const g = e.target.closest('[data-go]'); if(g){ const [b,c,v] = g.dataset.go.split('.').map(Number); openRef(b,c,v); }
   };
-  loadAll().catch(()=>{});                  // warm up in the background so word search is quick
   liveSearch(lastQ);
   if(!lastQ && window.matchMedia('(pointer:fine)').matches) q.focus();
 }
@@ -259,13 +267,14 @@ function liveSearch(raw){
 async function verseSearch(q){
   const res = $('#res'), my = ++sToken; if(!res || q.length < 2) return;
   res.innerHTML = `<p class="label sect">Verses</p><p class="empty">Searching…</p>`;
-  try{ await loadAll(); }
+  if(!full) res.innerHTML = `<p class="label sect">Verses</p><p class="empty">Getting the Bible ready for search. This happens once, then search is instant and works offline.</p>`;
+  try{ await loadFull(); }
   catch(e){ if(my===sToken) res.innerHTML = `<p class="empty">Word search needs the full Bible. Connect to the internet once, or use "Save the whole Bible for offline" in settings.</p>`; return; }
   if(my !== sToken) return;
   const safe = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const whole = new RegExp('\\b' + safe + '\\b', 'i'), part = new RegExp(safe, 'i');
   const exact = [], other = [];
-  for(let b=1;b<=66;b++) cache[b].forEach((ch,ci)=>ch.forEach((t,vi)=>{ if(whole.test(t)) exact.push([b,ci+1,vi+1,t]); else if(part.test(t)) other.push([b,ci+1,vi+1,t]); }));
+  for(let b=1;b<=66;b++) full[b-1].forEach((ch,ci)=>ch.forEach((t,vi)=>{ if(whole.test(t)) exact.push([b,ci+1,vi+1,t]); else if(part.test(t)) other.push([b,ci+1,vi+1,t]); }));
   const hits = exact.concat(other), show = hits.slice(0,100), hl = new RegExp(safe,'gi');
   res.innerHTML = `<p class="label sect">Verses containing "${esc(q)}" · ${hits.length.toLocaleString()} found${hits.length>100?', showing 100':''}</p>` +
     (hits.length ? show.map(([b,c,v,t])=>`<div class="verse"><div class="meta"><b>${esc(refOf(b,c,v))}</b><button class="small" data-go="${b}.${c}.${v}">Open</button></div><p>${esc(t).replace(hl,x=>`<mark>${x}</mark>`)}</p></div>`).join('') : `<p class="empty">No verses contain those words.</p>`);
@@ -341,7 +350,8 @@ function openSettings(){
   $('#closeS').onclick = closeSheet;
   $('#dlAll').onclick = async () => {
     const m = $('#dlMsg'), btn = $('#dlAll'); btn.disabled = true;
-    try{ for(let b=1;b<=66;b++){ await loadBook(b); m.textContent = `${Math.round(b/66*100)}%`; } m.textContent = 'Done. The whole Bible is on your phone.'; }
+    m.textContent = 'Downloading…';
+    try{ await loadFull(); m.textContent = 'Done. The whole Bible is on your phone.'; }
     catch(e){ m.textContent = 'Stopped. Check your connection and try again.'; btn.disabled = false; }
   };
 }
