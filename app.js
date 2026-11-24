@@ -64,6 +64,7 @@ function vToday(){
       <button class="btn" id="vSave">${marks[`${v.b}.${v.c}.${v.v}`] ? 'Saved' : 'Save'}</button>
     </div>
   </div>
+  <div class="finds" style="margin-top:16px"><a class="findbox" href="#books">Search books</a><a class="findbox" href="#search">Search verses</a></div>
   <section>
     <h2>Today's reading</h2>
     <div class="cards">
@@ -371,7 +372,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', () => { try{ n
 /* ---------- ROUTER ---------- */
 function route(){
   const h = (location.hash || '#today').slice(1);
-  const tab = h.startsWith('help') ? 'help' : (h === 'search' || h === 'books') ? 'bible' : h;
+  const tab = h.startsWith('help') ? 'help' : (h === 'search' || h === 'books') ? 'search' : h;
   document.querySelectorAll('.tabs a').forEach(a => a.classList.toggle('on', a.dataset.t === tab));
   view.onclick = null; closeSheet(); if(h !== 'bible') clearSel();
   if(h === 'bible') vBible();
