@@ -2,7 +2,7 @@
 
 A simple, free Bible with no ads.
 
-**Open it:** https://dwightakins.github.io/gods-word/
+**Open it:** https://gods-word-xi.vercel.app/
 
 ## Features
 - The full King James Version (KJV), Old and New Testament
