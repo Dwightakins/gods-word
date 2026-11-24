@@ -186,7 +186,7 @@ function drawBooks(){
   }
   $('#blist').innerHTML = html;
 }
-function openBook(b){ if(books[b-1].c === 1){ bk.book=0; openRef(b,1); return; } bk.book = b; vChapters(b); }
+function openBook(b){ if(books[b-1].c === 1){ bk.book=0; openRef(b,1); return; } bk.book = b; if(location.hash === '#books') vChapters(b); else go('books'); }
 function vChapters(b){
   const n = books[b-1].c;
   view.innerHTML = `<button class="back" id="allB" style="padding:0">‹ All books</button>
@@ -223,34 +223,51 @@ $('#actions').addEventListener('click', e => {
 function vBibleKeep(){ const y = window.scrollY; vBible().then(()=>window.scrollTo(0,y)); }
 
 /* ---------- SEARCH ---------- */
-let lastQ = '';
+let lastQ = '', sTimer = 0, sToken = 0;
+const loadAll = () => Promise.all(books.map((_,i)=>loadBook(i+1)));
 function vSearch(){
   view.innerHTML = `<a class="back" href="#bible">‹ Back to reading</a>
-  <h1 style="margin:6px 0 14px">Search the Bible</h1>
-  <form id="sf"><input type="search" id="q" placeholder="Words or a verse: peace, fear not, John 3:16" value="${esc(lastQ)}" enterkeyhint="search" aria-label="Search words"></form>
-  <div id="res"></div>`;
-  $('#sf').onsubmit = e => { e.preventDefault(); runSearch($('#q').value.trim()); };
-  if(lastQ) runSearch(lastQ); else $('#q').focus();
+  <h1 style="margin:6px 0 14px">Search</h1>
+  <form id="sf"><input type="search" id="q" placeholder="Book, verse or words: John, John 3:16, fear not" value="${esc(lastQ)}" enterkeyhint="search" autocomplete="off" aria-label="Search"></form>
+  <div id="sBooks"></div><div id="res"></div>`;
+  const q = $('#q');
+  q.oninput = () => { lastQ = q.value; liveSearch(q.value); };
+  $('#sf').onsubmit = e => { e.preventDefault(); const r = parseRef(q.value); if(r){ lastQ=''; openRef(r.b,r.c,r.v); return; }
+    const m = bookMatches(q.value); if(m.length === 1 || (m[0] && norm(books[m[0]-1].n) === norm(q.value))){ lastQ=''; openBook(m[0]); return; }
+    clearTimeout(sTimer); verseSearch(q.value.trim()); q.blur(); };
+  view.onclick = e => {
+    const r = e.target.closest('[data-ref]'); if(r){ const [b,c,v] = r.dataset.ref.split('.').map(Number); lastQ=''; openRef(b,c,v); return; }
+    const bt = e.target.closest('[data-b]'); if(bt){ lastQ=''; openBook(+bt.dataset.b); return; }
+    const g = e.target.closest('[data-go]'); if(g){ const [b,c,v] = g.dataset.go.split('.').map(Number); openRef(b,c,v); }
+  };
+  loadAll().catch(()=>{});                  // warm up in the background so word search is quick
+  liveSearch(lastQ);
+  if(!lastQ && window.matchMedia('(pointer:fine)').matches) q.focus();
 }
-async function runSearch(q){
-  lastQ = q; const res = $('#res');
-  const r = parseRef(q); if(r){ lastQ=''; openRef(r.b, r.c, r.v); return; }
-  if(q.length < 3){ res.innerHTML = `<p class="empty">Type at least 3 letters.</p>`; return; }
-  res.innerHTML = `<p class="empty" id="prog">Searching…</p>`;
-  const needle = q.toLowerCase(), hits = [];
-  try{
-    for(let b=1;b<=66;b++){
-      const bk = await loadBook(b);
-      bk.forEach((ch,ci)=>ch.forEach((t,vi)=>{ if(t.toLowerCase().includes(needle)) hits.push([b,ci+1,vi+1,t]); }));
-      if($('#prog')) $('#prog').textContent = `Searching… ${books[b-1].n}`;
-    }
-  }catch(e){ res.innerHTML = `<p class="empty">Search needs the full Bible. Connect to the internet once, or use "Save the whole Bible for offline" in settings.</p>`; return; }
-  if(lastQ !== q) return;
-  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
-  const show = hits.slice(0,200);
-  res.innerHTML = `<p class="label">${hits.length.toLocaleString()} verse${hits.length===1?'':'s'} found${hits.length>200?', showing the first 200':''}</p>` +
-    (hits.length ? show.map(([b,c,v,t])=>`<div class="verse"><div class="meta"><b>${esc(refOf(b,c,v))}</b><button class="small" data-go="${b}.${c}.${v}">Open</button></div><p>${esc(t).replace(re,m=>`<mark>${m}</mark>`)}</p></div>`).join('') : `<p class="empty">No verses found. Check the spelling, or try a shorter phrase.</p>`);
-  res.onclick = e => { const t = e.target.closest('[data-go]'); if(t){ const [b,c,v] = t.dataset.go.split('.').map(Number); openRef(b,c,v); } };
+function liveSearch(raw){
+  const q = raw.trim(), box = $('#sBooks'), res = $('#res');
+  clearTimeout(sTimer); sToken++;
+  if(!q){ box.innerHTML = `<p class="empty">Type a book name (like J or Gen), a verse (John 3:16) or any words.</p>`; res.innerHTML=''; return; }
+  const r = parseRef(q), m = bookMatches(q).slice(0,12);
+  let html = r ? `<button class="card jump" data-ref="${r.b}.${r.c}.${r.v}"><span>Go to</span><b>${esc(refOf(r.b,r.c,r.v||0))}</b></button>` : '';
+  if(m.length && !r) html += `<p class="label sect">Books</p><div class="blist">${m.map(b=>`<button class="brow" data-b="${b}"><span>${esc(books[b-1].n)}</span><small>${books[b-1].c} chapter${books[b-1].c>1?'s':''}</small></button>`).join('')}</div>`;
+  box.innerHTML = html;
+  res.innerHTML = '';
+  if(q.length >= 3 && !r) sTimer = setTimeout(()=>verseSearch(q), 450);
+}
+async function verseSearch(q){
+  const res = $('#res'), my = ++sToken; if(!res || q.length < 3) return;
+  res.innerHTML = `<p class="label sect">Verses</p><p class="empty">Searching…</p>`;
+  try{ await loadAll(); }
+  catch(e){ if(my===sToken) res.innerHTML = `<p class="empty">Word search needs the full Bible. Connect to the internet once, or use "Save the whole Bible for offline" in settings.</p>`; return; }
+  if(my !== sToken) return;
+  const safe = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const whole = new RegExp('\\b' + safe + '\\b', 'i'), part = new RegExp(safe, 'i');
+  const exact = [], other = [];
+  for(let b=1;b<=66;b++) cache[b].forEach((ch,ci)=>ch.forEach((t,vi)=>{ if(whole.test(t)) exact.push([b,ci+1,vi+1,t]); else if(part.test(t)) other.push([b,ci+1,vi+1,t]); }));
+  const hits = exact.concat(other), show = hits.slice(0,100), hl = new RegExp(safe,'gi');
+  res.innerHTML = `<p class="label sect">Verses containing "${esc(q)}" · ${hits.length.toLocaleString()} found${hits.length>100?', showing 100':''}</p>` +
+    (hits.length ? show.map(([b,c,v,t])=>`<div class="verse"><div class="meta"><b>${esc(refOf(b,c,v))}</b><button class="small" data-go="${b}.${c}.${v}">Open</button></div><p>${esc(t).replace(hl,x=>`<mark>${x}</mark>`)}</p></div>`).join('') : `<p class="empty">No verses contain those words.</p>`);
 }
 
 /* ---------- HELP ME ---------- */
