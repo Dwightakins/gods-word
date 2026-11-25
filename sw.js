@@ -1,5 +1,5 @@
 // God's Word service worker: opens instantly from the phone, and keeps what you read for offline use.
-const SHELL = 'gw-shell-v9';
+const SHELL = 'gw-shell-v10';
 const DATA = 'gw-data-v2';
 const FILES = ['./', 'index.html', 'app.js', 'data.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon.png',

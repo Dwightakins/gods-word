@@ -87,7 +87,8 @@ function vToday(){
   <section id="installBox" hidden>
     <div class="card"><b>Install God's Word</b><span id="installMsg">Add it to your home screen. It opens like an app and works offline.</span>
     <div class="row"><button class="btn primary" id="installBtn" hidden>Install app</button></div></div>
-  </section>`;
+  </section>
+  <p class="sig">by Dwight</p>`;
   $('#vOpen').onclick = () => openRef(v.b, v.c, v.v);
   $('#vShare').onclick = () => shareText(shareV);
   $('#vSave').onclick = e => { toggleMark(v.b, v.c, v.v, v.t); e.target.textContent = marks[`${v.b}.${v.c}.${v.v}`] ? 'Saved' : 'Save'; };
