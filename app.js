@@ -13,6 +13,9 @@ let pos = store.get('pos', {b:43, c:1});           // John 1
 let marks = store.get('marks', {});                // "b.c.v" -> {t, at}
 let hls = store.get('hls', {});                    // "b.c.v" -> {k, t, at}
 let prefs = store.get('prefs', {fs:20, theme:'auto'});
+if(!prefs.ver) prefs.ver = 'KJV';
+document.addEventListener('DOMContentLoaded', ()=>{ const vb = document.getElementById('verBadge'); if(vb) vb.textContent = prefs.ver; });
+{ const vb = document.getElementById('verBadge'); if(vb) vb.textContent = prefs.ver; }
 
 function applyPrefs(){
   document.documentElement.style.setProperty('--fs', prefs.fs+'px');
@@ -47,6 +50,55 @@ function loadFull(){
   if(!fullP) fullP = fetch('data/kjv.json').then(r=>{ if(!r.ok) throw new Error('load'); return r.json(); }).then(d=>full=d).catch(e=>{ fullP=null; throw e; });
   return fullP;
 }
+/* ---------- VERSIONS: KJV offline, NIV / NKJV / AMP online via API.Bible ---------- */
+const VERS = [
+  {id:'KJV',  name:'King James Version', note:'Saved on your phone. Works offline.'},
+  {id:'NIV',  name:'New International Version', note:'Online. Chapters you read are kept on your phone.'},
+  {id:'NKJV', name:'New King James Version', note:'Online. Chapters you read are kept on your phone.'},
+  {id:'AMP',  name:'Amplified Bible', note:'Online. Chapters you read are kept on your phone.'}
+];
+let curMeta = null, onlineVers = null;
+const VERR = {
+  offline: 'You are offline, and this chapter is not saved on your phone yet.',
+  not_configured: 'This version is not switched on yet.',
+  version_not_licensed: 'This version is not available right now.',
+  monthly_limit: 'This version has reached its free monthly limit. It will be back next month.',
+  bad_key: 'This version is not available right now.',
+  expired: 'This saved chapter is older than 30 days and needs a quick refresh. Connect to the internet and try again.'
+};
+async function getChapterV(v, b, c){
+  if(v === 'KJV') return {verses: await getChapter(b, c), meta: null};
+  let r;
+  try{ r = await fetch(`api/chapter?v=${v}&b=${b}&c=${c}`); }
+  catch(e){ throw new Error('offline'); }
+  const j = await r.json().catch(()=>({error:'upstream_error'}));
+  if(!r.ok) throw new Error(j.error || 'upstream_error');
+  return {verses: j.verses, meta: {v, copyright: j.copyright, fums: j.fumsToken}};
+}
+async function checkOnline(){
+  if(onlineVers !== null) return onlineVers;
+  try{ const r = await fetch('api/versions'); onlineVers = r.ok ? !!(await r.json()).online : false; }
+  catch(e){ onlineVers = false; }
+  return onlineVers;
+}
+// API.Bible asks web apps to report each chapter view (Fair Use Management System)
+let fumsLoaded = false;
+function trackView(token){
+  if(!token) return;
+  window.fumsData = window.fumsData || [];
+  window.fums = window.fums || function(){ window.fumsData.push(arguments); };
+  if(!fumsLoaded){ fumsLoaded = true; const sc = document.createElement('script'); sc.src = 'https://pkg.api.bible/fumsV3.min.js'; sc.async = true; document.body.appendChild(sc); }
+  try{ window.fums('trackView', token); }catch(e){}
+}
+async function pickVersion(){
+  const online = await checkOnline();
+  openSheet(`<h2>Choose a version</h2><div style="margin-top:12px">${VERS.map(x=>{
+    const off = x.id !== 'KJV' && !online;
+    return `<button class="brow${prefs.ver===x.id?' on':''}" data-ver="${x.id}" ${off?'disabled style="opacity:.5"':''}><span><b>${x.id}</b> · ${esc(x.name)}<br><small style="white-space:normal">${off?'Coming soon':esc(x.note)}</small></span>${prefs.ver===x.id?'<small>Selected</small>':''}</button>`;
+  }).join('')}</div><p class="label" style="margin-top:14px">Search, verse of the day and "Help me" use KJV.</p>`);
+  $('#panel').onclick = e => { const t = e.target.closest('[data-ver]'); if(!t || t.disabled) return; prefs.ver = t.dataset.ver; store.set('prefs', prefs); closeSheet(); vBible(); };
+}
+
 function dayOfYear(d=new Date()){ return Math.floor((d - new Date(d.getFullYear(),0,0)) / 864e5); }
 const NT = []; for(let b=40;b<=66;b++) for(let c=1;c<=books[b-1].c;c++) NT.push([b,c]);
 const go = h => { if(location.hash === '#'+h) route(); else location.hash = h; };
@@ -103,6 +155,7 @@ async function vBible(){
   view.innerHTML = `
   <div class="readbar">
     <button class="picker" id="pick"><span class="label" style="font:500 12px var(--sans);display:block">Books</span>${esc(bk.n)} ${c} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button class="verbtn" id="ver" aria-label="Change Bible version">${prefs.ver} ▾</button>
     <button class="nav2" id="prev" aria-label="Previous chapter">‹</button>
     <button class="nav2" id="next" aria-label="Next chapter">›</button>
     <a class="nav2" style="border-radius:10px;color:inherit" href="#search" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
@@ -110,18 +163,28 @@ async function vBible(){
   <div class="finds"><a class="findbox" href="#books"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6.5A2.5 2.5 0 0 0 4 21.5"/></svg>Search books</a><a class="findbox" href="#search"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Search verses</a></div>
   <div class="text" id="text"><p class="empty">Loading…</p></div>`;
   $('#pick').onclick = () => { bk.book = 0; go('books'); };
+  $('#ver').onclick = pickVersion;
   $('#prev').onclick = () => step(-1);
   $('#next').onclick = () => step(1);
+  const ver = prefs.ver;
+  $('#verBadge').textContent = ver;
   let ch;
-  try{ ch = await getChapter(b, c); }
-  catch(e){ $('#text').innerHTML = `<p class="empty">This chapter isn't saved on your phone yet. Connect to the internet once and it will be kept for offline reading.</p>`; return; }
-  if(pos.b !== b || pos.c !== c) return;
+  try{ const got = await getChapterV(ver, b, c); ch = got.verses; curMeta = got.meta; }
+  catch(e){
+    if(pos.b !== b || pos.c !== c || prefs.ver !== ver) return;
+    const msg = ver === 'KJV' ? `This chapter isn't saved on your phone yet. Connect to the internet once and it will be kept for offline reading.` : (VERR[e.message] || 'This version could not load. Check your connection and try again.');
+    $('#text').innerHTML = `<p class="empty">${msg}</p>` + (ver !== 'KJV' ? `<p style="text-align:center"><button class="btn primary" id="toKjv">Read this chapter in KJV</button></p>` : '');
+    if($('#toKjv')) $('#toKjv').onclick = () => { prefs.ver = 'KJV'; store.set('prefs', prefs); vBible(); };
+    return;
+  }
+  if(pos.b !== b || pos.c !== c || prefs.ver !== ver) return;
   curCh = ch;
   $('#text').innerHTML = `<h1>${esc(bk.n)} ${c}</h1>` + ch.map((t,i)=>{
     const k = `${b}.${c}.${i+1}`, h = hls[k];
     return `<span class="v${h ? ' h'+h.k : ''}" data-v="${i+1}"><sup>${i+1}</sup>${esc(t)}${marks[k] ? '<i class="bm" aria-label="bookmarked"></i>' : ''} </span>`;
-  }).join('') + `<div class="pager"><button class="btn" id="p2">‹ Previous</button><button class="btn" id="n2">Next ›</button></div>`;
-  { let nb=b, nc=c+1; if(nc>books[b-1].c){ nb=b+1; nc=1; } if(nb<=66 && !full) setTimeout(()=>getChapter(nb,nc).catch(()=>{}), 800); }
+  }).join('') + (curMeta ? `<p class="cr">${esc(curMeta.copyright || curMeta.v)}<br>${curMeta.v} text from <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a></p>` : '') + `<div class="pager"><button class="btn" id="p2">‹ Previous</button><button class="btn" id="n2">Next ›</button></div>`;
+  { let nb=b, nc=c+1; if(nc>books[b-1].c){ nb=b+1; nc=1; } if(nb<=66 && !full && ver === 'KJV') setTimeout(()=>getChapter(nb,nc).catch(()=>{}), 800); }
+  if(curMeta) trackView(curMeta.fums);
   $('#p2').onclick = () => step(-1);
   $('#n2').onclick = () => step(1);
   $('#text').addEventListener('click', e => {
@@ -230,8 +293,8 @@ $('#actions').addEventListener('click', e => {
   const a = t.dataset.a;
   if(a === 'clear'){ vs.forEach(v=>delete hls[`${pos.b}.${pos.c}.${v}`]); store.set('hls', hls); clearSel(); vBibleKeep(); }
   if(a === 'bm'){ const allOn = vs.every(v=>marks[`${pos.b}.${pos.c}.${v}`]); vs.forEach(v=>{ const k=`${pos.b}.${pos.c}.${v}`; if(allOn) delete marks[k]; else if(!marks[k]) marks[k]={t:ch[v-1],at:Date.now()}; }); store.set('marks',marks); toast(allOn?'Bookmark removed':'Bookmarked'); clearSel(); vBibleKeep(); }
-  if(a === 'copy'){ copyText(`"${text}"\n${ref} (KJV)`); clearSel(); }
-  if(a === 'share'){ shareText(`"${text}"\n${ref} (KJV)`); clearSel(); }
+  if(a === 'copy'){ copyText(`"${text}"\n${ref} (${prefs.ver})`); clearSel(); }
+  if(a === 'share'){ shareText(`"${text}"\n${ref} (${prefs.ver})`); clearSel(); }
   if(a === 'close') clearSel();
 });
 function vBibleKeep(){ const y = window.scrollY; vBible().then(()=>window.scrollTo(0,y)); }
@@ -344,7 +407,7 @@ function openSettings(){
     <p style="margin:6px 0">Chapters you open are kept on your phone. Save the whole Bible (about 4 MB) to read anywhere without data.</p>
     <button class="btn primary" id="dlAll">Save the whole Bible for offline</button> <span id="dlMsg" class="label"></span></div>
   <div class="setting"><span class="label">About</span>
-    <p style="margin:6px 0">God's Word is free and has no ads. Scripture is from the King James Version (public domain). Your bookmarks and highlights stay on your phone; nothing is sent anywhere.</p></div>
+    <p style="margin:6px 0">God's Word is free and has no ads. KJV is public domain. NIV, NKJV and AMP are copyrighted; their text is provided by <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a> and shown with each publisher's copyright notice. New International Version® NIV® © Biblica, Inc. New King James Version® © Thomas Nelson. Amplified® Bible © The Lockman Foundation. Used by permission. All rights reserved. Your bookmarks and highlights stay on your phone; nothing is sent anywhere.</p></div>
   <button class="btn" id="closeS">Done</button>`);
   $('#fs').oninput = e => { prefs.fs = +e.target.value; $('#fsPrev').style.fontSize = prefs.fs+'px'; applyPrefs(); store.set('prefs', prefs); };
   $('#panel').onclick = e => { const t = e.target.closest('[data-theme-set]'); if(t){ prefs.theme = t.dataset.themeSet; applyPrefs(); store.set('prefs', prefs); $('#panel').querySelectorAll('[data-theme-set]').forEach(x=>x.classList.toggle('on', x===t)); } };
