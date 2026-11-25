@@ -1,5 +1,5 @@
 // God's Word service worker: opens instantly from the phone, and keeps what you read for offline use.
-const SHELL = 'gw-shell-v15';
+const SHELL = 'gw-shell-v16';
 const DATA = 'gw-data-v2';
 const VERS = 'gw-versions-v1';   // NIV / NKJV / AMP chapters, kept up to 30 days (API.Bible rule)
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;

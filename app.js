@@ -234,12 +234,12 @@ function vBooks(){
   view.innerHTML = `<div class="readbar" style="flex-direction:column;align-items:stretch;gap:10px">
     <a class="back" style="margin:0" href="#bible">‹ Back to reading</a>${searchSwitch('books')}
     <input type="search" id="bq" placeholder="Type a book name: J, Gen, 1 Cor" value="${esc(bk.q)}" autocomplete="off" aria-label="Find a book">
-    <div class="seg" style="margin:0;align-self:flex-start">${[['all','All'],['ot','Old Testament'],['nt','New Testament']].map(([k,l])=>`<button data-tt="${k}" class="${bk.t===k?'on':''}">${l}</button>`).join('')}</div>
+    <div class="seg" id="testSeg" style="margin:0;align-self:flex-start">${[['all','All'],['ot','Old Testament'],['nt','New Testament']].map(([k,l])=>`<button data-tt="${k}" class="${bk.t===k?'on':''}">${l}</button>`).join('')}</div>
   </div><div id="blist"></div>`;
   const q = $('#bq');
   q.oninput = () => { bk.q = q.value; drawBooks(); };
   q.onkeydown = e => { if(e.key === 'Enter'){ const r = parseRef(q.value); if(r){ bk.q=''; openRef(r.b,r.c,r.v); } else { const f = bookMatches(q.value)[0]; if(f) openBook(f); } } };
-  view.querySelector('.seg').onclick = e => { const t = e.target.closest('[data-tt]'); if(!t) return; bk.t = t.dataset.tt; view.querySelectorAll('[data-tt]').forEach(x=>x.classList.toggle('on',x===t)); drawBooks(); };
+  $('#testSeg').onclick = e => { const t = e.target.closest('[data-tt]'); if(!t) return; bk.t = t.dataset.tt; view.querySelectorAll('[data-tt]').forEach(x=>x.classList.toggle('on',x===t)); drawBooks(); };
   $('#blist').onclick = e => {
     const r = e.target.closest('[data-ref]'); if(r){ const [b,c,v] = r.dataset.ref.split('.').map(Number); bk.q=''; openRef(b,c,v); return; }
     const t = e.target.closest('[data-b]'); if(t) openBook(+t.dataset.b);
