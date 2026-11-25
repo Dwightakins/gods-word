@@ -94,8 +94,8 @@ async function pickVersion(){
   const online = await checkOnline();
   openSheet(`<h2>Choose a version</h2><div style="margin-top:12px">${VERS.map(x=>{
     const off = x.id !== 'KJV' && !online;
-    return `<button class="brow${prefs.ver===x.id?' on':''}" data-ver="${x.id}" ${off?'disabled style="opacity:.5"':''}><span><b>${x.id}</b> · ${esc(x.name)}<br><small style="white-space:normal">${off?'Coming soon':esc(x.note)}</small></span>${prefs.ver===x.id?'<small>Selected</small>':''}</button>`;
-  }).join('')}</div><p class="label" style="margin-top:14px">Search, verse of the day and "Help me" use KJV.</p>`);
+    return `<button class="brow${prefs.ver===x.id?' on':''}" data-ver="${x.id}" ${off?'disabled style="opacity:.5"':''}><span><b>${x.id}</b> · ${esc(x.name)}${off?'<br><small>Coming soon</small>':''}</span>${prefs.ver===x.id?'<small>Selected</small>':''}</button>`;
+  }).join('')}</div>`);
   $('#panel').onclick = e => { const t = e.target.closest('[data-ver]'); if(!t || t.disabled) return; prefs.ver = t.dataset.ver; store.set('prefs', prefs); closeSheet(); vBible(); };
 }
 
@@ -181,7 +181,7 @@ async function vBible(){
   $('#text').innerHTML = `<h1>${esc(bk.n)} ${c}</h1>` + ch.map((t,i)=>{
     const k = `${b}.${c}.${i+1}`, h = hls[k];
     return `<span class="v${h ? ' h'+h.k : ''}" data-v="${i+1}"><sup>${i+1}</sup>${esc(t)}${marks[k] ? '<i class="bm" aria-label="bookmarked"></i>' : ''} </span>`;
-  }).join('') + (curMeta ? `<p class="cr">${esc(curMeta.copyright || curMeta.v)}<br>${curMeta.v} text from <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a></p>` : '') + `<div class="pager"><button class="btn" id="p2">‹ Previous</button><button class="btn" id="n2">Next ›</button></div>`;
+  }).join('') + (curMeta ? `<p class="cr">${esc(curMeta.copyright || curMeta.v)} <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a></p>` : '') + `<div class="pager"><button class="btn" id="p2">‹ Previous</button><button class="btn" id="n2">Next ›</button></div>`;
   { let nb=b, nc=c+1; if(nc>books[b-1].c){ nb=b+1; nc=1; } if(nb<=66 && !full && ver === 'KJV') setTimeout(()=>getChapter(nb,nc).catch(()=>{}), 800); }
   if(curMeta) trackView(curMeta.fums);
   $('#p2').onclick = () => step(-1);
@@ -406,7 +406,8 @@ function openSettings(){
     <p style="margin:6px 0">Chapters you open are kept on your phone. Save the whole Bible (about 4 MB) to read anywhere without data.</p>
     <button class="btn primary" id="dlAll">Save the whole Bible for offline</button> <span id="dlMsg" class="label"></span></div>
   <div class="setting"><span class="label">About</span>
-    <p style="margin:6px 0">God's Word is free and has no ads. KJV is public domain. NIV, NKJV and AMP are copyrighted; their text is provided by <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a> and shown with each publisher's copyright notice. New International Version® NIV® © Biblica, Inc. New King James Version® © Thomas Nelson. Amplified® Bible © The Lockman Foundation. Used by permission. All rights reserved. Your bookmarks and highlights stay on your phone; nothing is sent anywhere.</p></div>
+    <p style="margin:6px 0">God's Word. A free Bible.</p>
+    <p class="cr" style="margin:10px 0 0">NIV® © 1973, 1978, 1984, 2011 Biblica, Inc. NKJV® © 1982 Thomas Nelson. AMP® © The Lockman Foundation. Used by permission. All rights reserved. Text via <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a>.</p></div>
   <button class="btn" id="closeS">Done</button>`);
   $('#fs').oninput = e => { prefs.fs = +e.target.value; $('#fsPrev').style.fontSize = prefs.fs+'px'; applyPrefs(); store.set('prefs', prefs); };
   $('#panel').onclick = e => { const t = e.target.closest('[data-theme-set]'); if(t){ prefs.theme = t.dataset.themeSet; applyPrefs(); store.set('prefs', prefs); $('#panel').querySelectorAll('[data-theme-set]').forEach(x=>x.classList.toggle('on', x===t)); } };
