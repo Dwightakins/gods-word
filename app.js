@@ -52,10 +52,10 @@ function loadFull(){
 }
 /* ---------- VERSIONS: KJV offline, NIV / NKJV / AMP online via API.Bible ---------- */
 const VERS = [
-  {id:'KJV',  name:'King James Version', note:'Saved on your phone. Works offline.'},
-  {id:'NIV',  name:'New International Version', note:'Online. Chapters you read are kept on your phone.'},
-  {id:'NKJV', name:'New King James Version', note:'Online. Chapters you read are kept on your phone.'},
-  {id:'AMP',  name:'Amplified Bible', note:'Online. Chapters you read are kept on your phone.'}
+  {id:'KJV',  name:'King James Version'},
+  {id:'NIV',  name:'New International Version'},
+  {id:'NKJV', name:'New King James Version'},
+  {id:'AMP',  name:'Amplified Bible'}
 ];
 let curMeta = null, onlineVers = null;
 const VERR = {
@@ -441,7 +441,12 @@ function showInstall(){
   if(deferred){ box.hidden = false; const b = $('#installBtn'); b.hidden = false; b.onclick = async () => { deferred.prompt(); await deferred.userChoice; deferred = null; box.hidden = true; }; }
   else if(ios){ box.hidden = false; $('#installMsg').textContent = 'On iPhone: tap the Share button in Safari, then "Add to Home Screen".'; }
 }
-if('serviceWorker' in navigator){ window.addEventListener('load', () => { try{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){} }); }
+if('serviceWorker' in navigator){
+  // When a new version of the app is installed, reload once so people see it straight away
+  const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if(hadController && !reloaded){ reloaded = true; location.reload(); } });
+  window.addEventListener('load', () => { try{ navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(()=>{}); }catch(e){} });
+}
 
 /* ---------- ROUTER ---------- */
 function route(){
