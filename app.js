@@ -407,7 +407,7 @@ function openSettings(){
     <button class="btn primary" id="dlAll">Save the whole Bible for offline</button> <span id="dlMsg" class="label"></span></div>
   <div class="setting"><span class="label">About</span>
     <p style="margin:6px 0">God's Word. A free Bible.</p>
-    <p class="cr" style="margin:10px 0 0">NIV® © 1973, 1978, 1984, 2011 Biblica, Inc. NKJV® © 1982 Thomas Nelson. AMP® © The Lockman Foundation. Used by permission. All rights reserved. Text via <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a>.</p></div>
+    <p class="cr" style="margin:10px 0 0">NIV® © 1973, 1978, 1984, 2011 Biblica, Inc. NKJV® © 1982 Thomas Nelson. AMP® © 2015 The Lockman Foundation. Used by permission. All rights reserved. Text via <a href="https://api.bible" target="_blank" rel="noopener">API.Bible</a>.</p></div>
   <button class="btn" id="closeS">Done</button>`);
   $('#fs').oninput = e => { prefs.fs = +e.target.value; $('#fsPrev').style.fontSize = prefs.fs+'px'; applyPrefs(); store.set('prefs', prefs); };
   $('#panel').onclick = e => { const t = e.target.closest('[data-theme-set]'); if(t){ prefs.theme = t.dataset.themeSet; applyPrefs(); store.set('prefs', prefs); $('#panel').querySelectorAll('[data-theme-set]').forEach(x=>x.classList.toggle('on', x===t)); } };
