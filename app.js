@@ -94,7 +94,7 @@ async function pickVersion(){
   const online = await checkOnline();
   openSheet(`<h2>Choose a version</h2><div style="margin-top:12px">${VERS.map(x=>{
     const off = x.id !== 'KJV' && !online;
-    return `<button class="brow${prefs.ver===x.id?' on':''}" data-ver="${x.id}" ${off?'disabled style="opacity:.5"':''}><span><b>${x.id}</b> · ${esc(x.name)}${off?'<br><small>Coming soon</small>':''}</span>${prefs.ver===x.id?'<small>Selected</small>':''}</button>`;
+    return `<button class="brow${prefs.ver===x.id?' on':''}" data-ver="${x.id}" ${off?'disabled style="opacity:.5"':''}><span><b>${x.id}</b> · ${esc(x.name)}<br><small>${off?'Coming soon':(x.id==='KJV'?'Offline':'Online')}</small></span>${prefs.ver===x.id?'<small>Selected</small>':''}</button>`;
   }).join('')}</div>`);
   $('#panel').onclick = e => { const t = e.target.closest('[data-ver]'); if(!t || t.disabled) return; prefs.ver = t.dataset.ver; store.set('prefs', prefs); closeSheet(); vBible(); };
 }
