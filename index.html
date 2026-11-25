@@ -129,6 +129,13 @@ mark{background:var(--hl1);color:inherit;border-radius:3px}
 input[type=range]{width:100%;accent-color:var(--ox)}
 .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+#splash{position:fixed;inset:0;z-index:100;background:#ffffff;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .35s ease}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .sp-mid{display:flex;flex-direction:column;align-items:center;gap:14px}
+#splash img{width:88px;height:88px;border-radius:20px}
+#splash b{font:600 30px var(--serif);color:#1d1416}
+#splash .sp-by{position:absolute;bottom:calc(36px + env(safe-area-inset-bottom));font:italic 400 15px var(--serif);color:#6e6064;opacity:.6;letter-spacing:.03em}
+@media(prefers-reduced-motion:reduce){#splash{transition:none}}
 .sig{margin:40px 0 8px;text-align:center;font:italic 400 14px var(--serif);color:var(--mute);opacity:.55;letter-spacing:.02em}
 .verbtn{min-height:44px;padding:0 10px;border:1px solid var(--line);font:600 14px var(--sans);flex:none}
 .cr{margin:22px 0 0;font:400 13px/1.5 var(--sans);color:var(--mute)}
@@ -138,6 +145,7 @@ input[type=range]{width:100%;accent-color:var(--ox)}
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="sp-mid"><img src="icons/icon-192.png" alt=""><b>God's Word</b></div><span class="sp-by">by Dwight</span></div>
 <header class="top"><div class="in">
   <a class="brand" href="#today"><img src="icons/icon-192.png" alt="">God's Word <small id="verBadge">KJV</small></a>
   <button class="icon" id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
